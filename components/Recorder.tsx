@@ -22,6 +22,28 @@ export function Recorder({ orderId, skuId, className, onSaveSuccess }: RecorderP
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [recordedMimeType, setRecordedMimeType] = useState<string>('video/webm');
+
+  // Helper function to detect supported video codec
+  const getSupportedMimeType = (): string => {
+    const types = [
+      'video/webm;codecs=vp9',
+      'video/webm;codecs=vp8',
+      'video/webm;codecs=h264',
+      'video/webm',
+      'video/mp4;codecs=h264',
+      'video/mp4'
+    ];
+
+    for (const type of types) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        console.log('Using codec:', type);
+        return type;
+      }
+    }
+
+    return ''; // No supported type found
+  };
 
   const startCamera = useCallback(async () => {
     try {
@@ -56,7 +78,17 @@ export function Recorder({ orderId, skuId, className, onSaveSuccess }: RecorderP
     if (!stream) return;
 
     chunksRef.current = [];
-    const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+
+    // Get supported mime type with fallback
+    const mimeType = getSupportedMimeType();
+
+    if (!mimeType) {
+      setError('Your browser does not support video recording. Please try Chrome, Edge, or Firefox.');
+      return;
+    }
+
+    setRecordedMimeType(mimeType);
+    const mediaRecorder = new MediaRecorder(stream, { mimeType });
 
     mediaRecorder.ondataavailable = (e) => {
       if (e.data.size > 0) {
@@ -65,7 +97,7 @@ export function Recorder({ orderId, skuId, className, onSaveSuccess }: RecorderP
     };
 
     mediaRecorder.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+      const blob = new Blob(chunksRef.current, { type: mimeType });
       const url = URL.createObjectURL(blob);
       setPreviewUrl(url);
     };
@@ -75,6 +107,7 @@ export function Recorder({ orderId, skuId, className, onSaveSuccess }: RecorderP
     mediaRecorderRef.current = mediaRecorder;
     setSuccessMessage(null);
     setPreviewUrl(null);
+    setError(null);
   };
 
   const stopRecording = () => {
@@ -94,7 +127,7 @@ export function Recorder({ orderId, skuId, className, onSaveSuccess }: RecorderP
     setError(null);
 
     try {
-      const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+      const blob = new Blob(chunksRef.current, { type: recordedMimeType });
       const formData = new FormData();
       formData.append('file', blob);
       formData.append('orderId', orderId);
