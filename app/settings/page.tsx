@@ -13,6 +13,8 @@ interface StorageConfig {
   storjSecretKey?: string;
   storjEndpoint?: string;
   storjBucket?: string;
+  maxDuration?: number;
+  maxFileSize?: number;
 }
 
 export default function SettingsPage() {
@@ -25,6 +27,8 @@ export default function SettingsPage() {
   const [storjSecretKey, setStorjSecretKey] = useState('');
   const [storjEndpoint, setStorjEndpoint] = useState('');
   const [storjBucket, setStorjBucket] = useState('');
+  const [maxDuration, setMaxDuration] = useState(300); // 5 minutes default
+  const [maxFileSize, setMaxFileSize] = useState(100); // 100 MB default
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -43,6 +47,8 @@ export default function SettingsPage() {
         setStorjSecretKey(data.storjSecretKey || '');
         setStorjEndpoint(data.storjEndpoint || '');
         setStorjBucket(data.storjBucket || '');
+        setMaxDuration(data.maxDuration || 300);
+        setMaxFileSize(data.maxFileSize || 100);
         setLoading(false);
       })
       .catch(err => {
@@ -66,6 +72,8 @@ export default function SettingsPage() {
         storjSecretKey: storageType === 'storj' ? storjSecretKey : '',
         storjEndpoint: storageType === 'storj' ? storjEndpoint : '',
         storjBucket: storageType === 'storj' ? storjBucket : '',
+        maxDuration,
+        maxFileSize
       };
 
       const res = await fetch('/api/settings', {
@@ -321,6 +329,46 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+
+          {/* Video Recording Constraints */}
+          <div className="p-4 bg-white dark:bg-black/30 rounded-lg border border-gray-200 dark:border-gray-700">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Video Recording Limits</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Maximum Duration (seconds)
+                </label>
+                <input
+                  type="number"
+                  value={maxDuration}
+                  onChange={(e) => setMaxDuration(parseInt(e.target.value) || 300)}
+                  min="10"
+                  max="3600"
+                  className="w-full bg-white dark:bg-black border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Maximum recording time: {Math.floor(maxDuration / 60)}m {maxDuration % 60}s (10s - 1 hour)
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Maximum File Size (MB)
+                </label>
+                <input
+                  type="number"
+                  value={maxFileSize}
+                  onChange={(e) => setMaxFileSize(parseInt(e.target.value) || 100)}
+                  min="1"
+                  max="1000"
+                  className="w-full bg-white dark:bg-black border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Maximum file size allowed: {maxFileSize} MB (1 MB - 1000 MB)
+                </p>
+              </div>
+            </div>
+          </div>
 
           {message && (
             <div className={`p-4 rounded-lg flex items-center gap-2 text-sm ${

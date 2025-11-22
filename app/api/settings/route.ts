@@ -15,6 +15,9 @@ interface StorageConfig {
   storjSecretKey?: string;
   storjEndpoint?: string;
   storjBucket?: string;
+  // Video recording constraints
+  maxDuration?: number; // Maximum recording duration in seconds
+  maxFileSize?: number; // Maximum file size in MB
 }
 
 export async function GET() {
@@ -33,7 +36,9 @@ export async function GET() {
       storjAccessKey: '',
       storjSecretKey: '',
       storjEndpoint: '',
-      storjBucket: ''
+      storjBucket: '',
+      maxDuration: 300, // 5 minutes default
+      maxFileSize: 100  // 100 MB default
     });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to load settings' }, { status: 500 });
@@ -43,10 +48,27 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as StorageConfig;
-    const { storageType, localPath, saveUrl, readUrl, apiKey, storjAccessKey, storjSecretKey, storjEndpoint, storjBucket } = body;
+    const {
+      storageType, localPath, saveUrl, readUrl, apiKey,
+      storjAccessKey, storjSecretKey, storjEndpoint, storjBucket,
+      maxDuration, maxFileSize
+    } = body;
 
     if (!storageType) {
       return NextResponse.json({ error: 'Storage type is required' }, { status: 400 });
+    }
+
+    // Validate video constraints
+    if (maxDuration !== undefined && (maxDuration < 10 || maxDuration > 3600)) {
+      return NextResponse.json({
+        error: 'Max duration must be between 10 seconds and 1 hour (3600 seconds)'
+      }, { status: 400 });
+    }
+
+    if (maxFileSize !== undefined && (maxFileSize < 1 || maxFileSize > 1000)) {
+      return NextResponse.json({
+        error: 'Max file size must be between 1 MB and 1000 MB'
+      }, { status: 400 });
     }
 
     // Validate based on storage type
@@ -99,7 +121,9 @@ export async function POST(req: NextRequest) {
       storjAccessKey: storjAccessKey || '',
       storjSecretKey: storjSecretKey || '',
       storjEndpoint: storjEndpoint || '',
-      storjBucket: storjBucket || ''
+      storjBucket: storjBucket || '',
+      maxDuration: maxDuration || 300,
+      maxFileSize: maxFileSize || 100
     };
 
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
