@@ -1,16 +1,17 @@
 'use client';
 
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { Video, Square, Save, Loader2, RefreshCw } from 'lucide-react';
+import { Video, Square, Save, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface RecorderProps {
   orderId: string;
   skuId: string;
   className?: string;
+  onSaveSuccess?: () => void;
 }
 
-export function Recorder({ orderId, skuId, className }: RecorderProps) {
+export function Recorder({ orderId, skuId, className, onSaveSuccess }: RecorderProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -110,11 +111,12 @@ export function Recorder({ orderId, skuId, className }: RecorderProps) {
 
       const data = await response.json();
       setSuccessMessage(`Video saved successfully to ${data.path}`);
+      if (onSaveSuccess) onSaveSuccess();
       setPreviewUrl(null);
       chunksRef.current = [];
     } catch (err) {
       console.error('Error saving video:', err);
-      setError('Failed to save video. Please try again.');
+      setError('Failed to save video. Please check your connection and try again.');
     } finally {
       setIsSaving(false);
     }
@@ -129,7 +131,7 @@ export function Recorder({ orderId, skuId, className }: RecorderProps) {
 
   return (
     <div className={cn("flex flex-col gap-4", className)}>
-      <div className="relative aspect-video bg-black rounded-xl overflow-hidden border border-gray-800 shadow-2xl">
+      <div className="relative aspect-video bg-black rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 shadow-2xl">
         {previewUrl ? (
           <video
             src={previewUrl}
@@ -154,7 +156,7 @@ export function Recorder({ orderId, skuId, className }: RecorderProps) {
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-4 bg-gray-900/50 p-4 rounded-xl border border-gray-800 backdrop-blur-sm">
+      <div className="flex items-center justify-between gap-4 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-200 dark:border-gray-800 backdrop-blur-sm">
         <div className="flex gap-2">
           {!isRecording && !previewUrl && (
             <button
@@ -190,7 +192,7 @@ export function Recorder({ orderId, skuId, className }: RecorderProps) {
               <button
                 onClick={reset}
                 disabled={isSaving}
-                className="flex items-center gap-2 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg font-medium transition-all"
+                className="flex items-center gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-all"
               >
                 <RefreshCw size={20} />
                 Retake
@@ -199,14 +201,38 @@ export function Recorder({ orderId, skuId, className }: RecorderProps) {
           )}
         </div>
 
-        <div className="text-sm">
-          {error && <span className="text-red-400">{error}</span>}
-          {successMessage && <span className="text-green-400">{successMessage}</span>}
-          {!orderId || !skuId ? (
-            <span className="text-yellow-500/80 italic">Enter Order ID & SKU to save</span>
-          ) : null}
-        </div>
       </div>
+
+      {/* Error / Warning Alert */}
+      {(error || (!orderId || !skuId)) && (
+        <div className={cn(
+          "p-4 rounded-xl border flex items-start gap-3 transition-all",
+          error
+            ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400"
+            : "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-400"
+        )}>
+          <AlertCircle size={20} className="shrink-0 mt-0.5" />
+          <div className="text-sm">
+            {error ? (
+              <p className="font-medium">{error}</p>
+            ) : (
+              <>
+                <p className="font-medium">Missing Information</p>
+                <p className="opacity-90 mt-1">
+                  Please scan or enter both <strong>Order ID</strong> and <strong>SKU ID</strong> before saving the recording.
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 flex items-center gap-3">
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          <p className="text-sm font-medium">{successMessage}</p>
+        </div>
+      )}
     </div>
   );
 }

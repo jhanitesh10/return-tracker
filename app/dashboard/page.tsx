@@ -67,7 +67,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="p-8 text-white h-screen flex flex-col overflow-hidden">
+    <main className="p-8 text-gray-900 dark:text-white h-screen flex flex-col overflow-hidden transition-colors duration-300">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">Recordings Explorer</h1>
@@ -79,17 +79,17 @@ export default function DashboardPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search Order ID, SKU, or Date..."
-            className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+            className="w-full bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl pl-10 pr-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-500"
           />
         </div>
       </div>
 
       {/* Breadcrumbs (Only in List Mode) */}
       {mode === 'list' && (
-        <div className="flex items-center gap-2 mb-6 text-sm text-gray-400 bg-gray-900/30 p-3 rounded-lg border border-gray-800">
+        <div className="flex items-center gap-2 mb-6 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-900/30 p-3 rounded-lg border border-gray-200 dark:border-gray-800">
           <button
             onClick={() => handleNavigate('')}
-            className="hover:text-white flex items-center gap-1 transition-colors"
+            className="hover:text-gray-900 dark:hover:text-white flex items-center gap-1 transition-colors"
           >
             <Home size={16} />
             <span>Root</span>
@@ -100,7 +100,7 @@ export default function DashboardPage() {
               <ChevronRight size={14} />
               <button
                 onClick={() => handleBreadcrumbClick(index)}
-                className="hover:text-white font-medium transition-colors"
+                className="hover:text-gray-900 dark:hover:text-white font-medium transition-colors"
               >
                 {part}
               </button>
@@ -129,14 +129,14 @@ export default function DashboardPage() {
                 className={cn(
                   "group p-4 rounded-xl border transition-all cursor-pointer flex flex-col gap-3 relative overflow-hidden",
                   item.type === 'folder'
-                    ? "bg-gray-900/30 border-gray-800 hover:bg-gray-800 hover:border-gray-700"
-                    : "bg-gray-900/50 border-gray-800 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-900/10"
+                    ? "bg-gray-50 dark:bg-gray-900/30 border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
+                    : "bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-900/10"
                 )}
               >
                 <div className="flex items-start justify-between">
                   <div className={cn(
                     "p-3 rounded-lg",
-                    item.type === 'folder' ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"
+                    item.type === 'folder' ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" : "bg-purple-500/10 text-purple-600 dark:text-purple-400"
                   )}>
                     {item.type === 'folder' ? <Folder size={24} /> : <FileVideo size={24} />}
                   </div>
@@ -166,12 +166,12 @@ export default function DashboardPage() {
       {/* Video Modal */}
       {selectedVideo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-8">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-5xl overflow-hidden shadow-2xl relative flex flex-col max-h-full">
-            <div className="p-4 border-b border-gray-800 flex items-center justify-between bg-black/50">
-              <h3 className="font-bold text-lg truncate pr-4">{selectedVideo.name}</h3>
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl w-full max-w-5xl overflow-hidden shadow-2xl relative flex flex-col max-h-full">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between bg-gray-50 dark:bg-black/50">
+              <h3 className="font-bold text-lg truncate pr-4 text-gray-900 dark:text-white">{selectedVideo.name}</h3>
               <button
                 onClick={() => setSelectedVideo(null)}
-                className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 dark:text-gray-400"
               >
                 <X size={24} />
               </button>

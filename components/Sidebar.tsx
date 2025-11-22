@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { Video, LayoutDashboard, Settings, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from './ThemeToggle';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -16,12 +17,12 @@ export function Sidebar() {
   ];
 
   return (
-    <div className="w-64 bg-black border-r border-gray-800 flex flex-col h-screen sticky top-0">
-      <div className="p-6 flex items-center gap-3 border-b border-gray-800">
+    <div className="w-64 bg-gray-50 dark:bg-black border-r border-gray-200 dark:border-gray-800 flex flex-col h-screen sticky top-0 transition-colors duration-300">
+      <div className="p-6 flex items-center gap-3 border-b border-gray-200 dark:border-gray-800">
         <div className="relative w-8 h-8 rounded-lg overflow-hidden shadow-lg shadow-red-900/20">
           <Image src="/logo.png" alt="Trakhija Logo" fill className="object-cover" />
         </div>
-        <h1 className="font-bold text-xl tracking-tight text-white">Trakhija</h1>
+        <h1 className="font-bold text-xl tracking-tight text-gray-900 dark:text-white">Trakhija</h1>
       </div>
 
       <nav className="flex-1 p-4 space-y-2">
@@ -47,7 +48,8 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="p-4 border-t border-gray-800">
+      <div className="p-4 border-t border-gray-800 space-y-4">
+        <ThemeToggle />
         <div className="bg-gray-900/50 rounded-xl p-4 text-xs text-gray-500 text-center">
           v1.0.0
         </div>

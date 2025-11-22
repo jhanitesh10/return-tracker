@@ -58,13 +58,13 @@ export function Scanner({ onScan, label, value, onChange, className }: ScannerPr
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      <label className="text-sm font-medium text-gray-300">{label}</label>
+      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
       <div className="flex gap-2">
         <input
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="flex-1 bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder={`Enter ${label}...`}
         />
         <button

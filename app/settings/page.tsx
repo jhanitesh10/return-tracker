@@ -69,17 +69,17 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="p-8 text-white max-w-4xl mx-auto">
+    <main className="p-8 text-gray-900 dark:text-white max-w-4xl mx-auto transition-colors duration-300">
       <h1 className="text-3xl font-bold mb-8">Settings</h1>
 
-      <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-8 backdrop-blur-sm">
+      <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-2xl p-8 backdrop-blur-sm">
         <div className="flex items-start gap-4 mb-6">
-          <div className="p-3 bg-blue-500/20 rounded-lg text-blue-400">
+          <div className="p-3 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg">
             <Folder size={24} />
           </div>
           <div>
             <h2 className="text-xl font-semibold mb-1">Storage Configuration</h2>
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
               Choose where video recordings should be saved on your local machine.
               Ensure the application has write permissions to this directory.
             </p>
@@ -88,7 +88,7 @@ export default function SettingsPage() {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Local Storage Path
             </label>
             <div className="flex gap-2">
@@ -96,12 +96,12 @@ export default function SettingsPage() {
                 type="text"
                 value={path}
                 onChange={(e) => setPath(e.target.value)}
-                className="flex-1 bg-black border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                className="flex-1 bg-white dark:bg-black border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                 placeholder="/path/to/recordings"
               />
               <button
                 onClick={handleBrowse}
-                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors border border-gray-700"
+                className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-white rounded-lg font-medium transition-colors border border-gray-200 dark:border-gray-700"
               >
                 Browse
               </button>
