@@ -1,6 +1,17 @@
 {
   "recordings": [
     {
+      "orderId": "asd",
+      "skuId": "sad",
+      "date": "2025-11-22",
+      "timestamp": 1763848575147,
+      "storageType": "storj",
+      "path": "asd/sad/2025-11-22/recording_1763848575147.webm",
+      "url": "https://gateway.storjshare.io/return-tracker/asd/sad/2025-11-22/recording_1763848575147.webm",
+      "filename": "recording_1763848575147.webm",
+      "mimeType": "video/webm;codecs=vp9"
+    },
+    {
       "orderId": "nj_order_id",
       "skuId": "nj_sku_id",
       "date": "2025-11-22",
@@ -100,5 +111,5 @@
       "mimeType": "video/webm;codecs=vp9"
     }
   ],
-  "lastUpdated": 1763848102512
+  "lastUpdated": 1763848576194
 }

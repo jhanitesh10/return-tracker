@@ -25,6 +25,9 @@ const CONFIG_BLOB_KEY = 'app-config';
  * Check if running in Netlify environment
  */
 function isNetlify(): boolean {
+  console.log('🔵 Running on Netlify', process.env.NETLIFY);
+  console.log('🔵 Running on Netlify', process.env.NETLIFY_DEV);
+  console.log('🔵 Running on Netlify', process.env.AWS_LAMBDA_FUNCTION_NAME);
   return !!(
     process.env.NETLIFY ||
     process.env.NETLIFY_DEV ||
