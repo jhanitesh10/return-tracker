@@ -67,7 +67,7 @@ async function saveToLocal(
   const relativePath = path.relative(baseDir, filePath);
 
   // Save metadata
-  addRecording({
+  await addRecording({
     orderId,
     skuId,
     date,
@@ -114,7 +114,7 @@ async function saveToUrl(file: File, orderId: string, skuId: string, config: Sto
   const timestamp = Date.now();
 
   // Save metadata
-  addRecording({
+  await addRecording({
     orderId,
     skuId,
     date,
@@ -175,7 +175,7 @@ async function saveToStorj(
   const fileUrl = `${config.storjEndpoint}/${config.storjBucket}/${key}`;
 
   // Save metadata
-  addRecording({
+  await addRecording({
     orderId,
     skuId,
     date,

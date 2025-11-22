@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Check if this is a URL or Storj path in metadata
-    const metadata = readMetadata();
+    const metadata = await readMetadata();
     const recording = metadata.recordings.find(r => r.path === filePath);
 
     if (recording) {

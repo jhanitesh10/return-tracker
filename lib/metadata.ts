@@ -1,7 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+import { getStore } from '@netlify/blobs';
 
 const METADATA_FILE = path.join(process.cwd(), 'recordings-metadata.json');
+const METADATA_BLOB_KEY = 'recordings-metadata';
 
 export interface RecordingMetadata {
   orderId: string;
@@ -21,31 +23,66 @@ interface MetadataStore {
 }
 
 /**
- * Read metadata from file
+ * Check if running in Netlify environment
  */
-export function readMetadata(): MetadataStore {
-  if (!fs.existsSync(METADATA_FILE)) {
-    return { recordings: [], lastUpdated: Date.now() };
-  }
-
-  try {
-    const data = fs.readFileSync(METADATA_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('Error reading metadata:', error);
-    return { recordings: [], lastUpdated: Date.now() };
-  }
+function isNetlify(): boolean {
+  return !!process.env.NETLIFY;
 }
 
 /**
- * Write metadata to file
+ * Read metadata from Netlify Blobs or local file
  */
-export function writeMetadata(store: MetadataStore): void {
+export async function readMetadata(): Promise<MetadataStore> {
+  // Use Netlify Blobs in production
+  if (isNetlify()) {
+    try {
+      const store = getStore('metadata');
+      const data = await store.get(METADATA_BLOB_KEY, { type: 'json' });
+      if (data) {
+        return data as MetadataStore;
+      }
+    } catch (error) {
+      console.error('Error reading from Netlify Blobs:', error);
+    }
+    return { recordings: [], lastUpdated: Date.now() };
+  }
+
+  // Use local file in development
+  if (fs.existsSync(METADATA_FILE)) {
+    try {
+      const data = fs.readFileSync(METADATA_FILE, 'utf-8');
+      return JSON.parse(data);
+    } catch (error) {
+      console.error('Error reading local metadata:', error);
+    }
+  }
+
+  return { recordings: [], lastUpdated: Date.now() };
+}
+
+/**
+ * Write metadata to Netlify Blobs or local file
+ */
+export async function writeMetadata(store: MetadataStore): Promise<void> {
+  store.lastUpdated = Date.now();
+
+  // Use Netlify Blobs in production
+  if (isNetlify()) {
+    try {
+      const blobStore = getStore('metadata');
+      await blobStore.setJSON(METADATA_BLOB_KEY, store);
+      return;
+    } catch (error) {
+      console.error('Error writing to Netlify Blobs:', error);
+      throw error;
+    }
+  }
+
+  // Use local file in development
   try {
-    store.lastUpdated = Date.now();
     fs.writeFileSync(METADATA_FILE, JSON.stringify(store, null, 2));
   } catch (error) {
-    console.error('Error writing metadata:', error);
+    console.error('Error writing local metadata:', error);
     throw error;
   }
 }
@@ -53,28 +90,28 @@ export function writeMetadata(store: MetadataStore): void {
 /**
  * Add a new recording to metadata
  */
-export function addRecording(recording: RecordingMetadata): void {
-  const store = readMetadata();
+export async function addRecording(recording: RecordingMetadata): Promise<void> {
+  const store = await readMetadata();
   store.recordings.unshift(recording); // Add to beginning
-  writeMetadata(store);
+  await writeMetadata(store);
 }
 
 /**
  * Get recent recordings (last N)
  */
-export function getRecentRecordings(limit: number = 10): RecordingMetadata[] {
-  const store = readMetadata();
+export async function getRecentRecordings(limit: number = 10): Promise<RecordingMetadata[]> {
+  const store = await readMetadata();
   return store.recordings.slice(0, limit);
 }
 
 /**
  * Search recordings by query
  */
-export function searchRecordings(query: string): RecordingMetadata[] {
-  const store = readMetadata();
+export async function searchRecordings(query: string): Promise<RecordingMetadata[]> {
+  const store = await readMetadata();
   const lowerQuery = query.toLowerCase();
 
-  return store.recordings.filter(rec =>
+  return store.recordings.filter((rec: RecordingMetadata) =>
     rec.orderId.toLowerCase().includes(lowerQuery) ||
     rec.skuId.toLowerCase().includes(lowerQuery) ||
     rec.date.includes(lowerQuery)
@@ -84,12 +121,12 @@ export function searchRecordings(query: string): RecordingMetadata[] {
 /**
  * Get recordings with pagination
  */
-export function getRecordings(offset: number = 0, limit: number = 20): {
+export async function getRecordings(offset: number = 0, limit: number = 20): Promise<{
   recordings: RecordingMetadata[];
   total: number;
   hasMore: boolean;
-} {
-  const store = readMetadata();
+}> {
+  const store = await readMetadata();
   const total = store.recordings.length;
   const recordings = store.recordings.slice(offset, offset + limit);
 
@@ -103,15 +140,15 @@ export function getRecordings(offset: number = 0, limit: number = 20): {
 /**
  * Get recordings grouped by date/order/sku for navigation
  */
-export function getRecordingsByPath(pathSegments: string[]): {
+export async function getRecordingsByPath(pathSegments: string[]): Promise<{
   folders: string[];
   files: RecordingMetadata[];
-} {
-  const store = readMetadata();
+}> {
+  const store = await readMetadata();
 
   if (pathSegments.length === 0) {
     // Root level: return unique dates
-    const dates = [...new Set(store.recordings.map(r => r.date))].sort().reverse();
+    const dates = [...new Set(store.recordings.map((r: RecordingMetadata) => r.date))].sort().reverse();
     return { folders: dates, files: [] };
   }
 
@@ -120,8 +157,8 @@ export function getRecordingsByPath(pathSegments: string[]): {
     const [date] = pathSegments;
     const orderIds = [...new Set(
       store.recordings
-        .filter(r => r.date === date)
-        .map(r => r.orderId)
+        .filter((r: RecordingMetadata) => r.date === date)
+        .map((r: RecordingMetadata) => r.orderId)
     )].sort();
     return { folders: orderIds, files: [] };
   }
@@ -131,8 +168,8 @@ export function getRecordingsByPath(pathSegments: string[]): {
     const [date, orderId] = pathSegments;
     const skuIds = [...new Set(
       store.recordings
-        .filter(r => r.date === date && r.orderId === orderId)
-        .map(r => r.skuId)
+        .filter((r: RecordingMetadata) => r.date === date && r.orderId === orderId)
+        .map((r: RecordingMetadata) => r.skuId)
     )].sort();
     return { folders: skuIds, files: [] };
   }
@@ -141,7 +178,7 @@ export function getRecordingsByPath(pathSegments: string[]): {
     // SKU level: return files for this date/order/sku
     const [date, orderId, skuId] = pathSegments;
     const files = store.recordings.filter(
-      r => r.date === date && r.orderId === orderId && r.skuId === skuId
+      (r: RecordingMetadata) => r.date === date && r.orderId === orderId && r.skuId === skuId
     );
     return { folders: [], files };
   }
@@ -152,12 +189,12 @@ export function getRecordingsByPath(pathSegments: string[]): {
 /**
  * Migrate existing local recordings to metadata
  */
-export function migrateLocalRecordings(localPath: string): number {
+export async function migrateLocalRecordings(localPath: string): Promise<number> {
   if (!fs.existsSync(localPath)) {
     return 0;
   }
 
-  const store = readMetadata();
+  const store = await readMetadata();
   let migratedCount = 0;
 
   function scanDirectory(dirPath: string, pathParts: string[] = []) {
@@ -175,7 +212,7 @@ export function migrateLocalRecordings(localPath: string): number {
           const relativePath = path.relative(localPath, fullPath);
 
           // Check if already in metadata
-          const exists = store.recordings.some(r => r.path === relativePath);
+          const exists = store.recordings.some((r: RecordingMetadata) => r.path === relativePath);
           if (!exists) {
             const stats = fs.statSync(fullPath);
             store.recordings.push({
@@ -199,8 +236,8 @@ export function migrateLocalRecordings(localPath: string): number {
 
   if (migratedCount > 0) {
     // Sort by timestamp descending
-    store.recordings.sort((a, b) => b.timestamp - a.timestamp);
-    writeMetadata(store);
+    store.recordings.sort((a: RecordingMetadata, b: RecordingMetadata) => b.timestamp - a.timestamp);
+    await writeMetadata(store);
   }
 
   return migratedCount;

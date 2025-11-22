@@ -24,13 +24,13 @@ function getStoragePath() {
 
 // Auto-migrate existing local recordings on first access
 let migrationDone = false;
-function ensureMigration() {
+async function ensureMigration() {
   if (!migrationDone) {
-    const store = readMetadata();
+    const store = await readMetadata();
     if (store.recordings.length === 0) {
       // No metadata yet, try to migrate local recordings
       const localPath = getStoragePath();
-      const count = migrateLocalRecordings(localPath);
+      const count = await migrateLocalRecordings(localPath);
       if (count > 0) {
         console.log(`Migrated ${count} existing recordings to metadata`);
       }
@@ -41,7 +41,7 @@ function ensureMigration() {
 
 export async function GET(req: NextRequest) {
   try {
-    ensureMigration();
+    await ensureMigration();
 
     const searchParams = req.nextUrl.searchParams;
     const query = searchParams.get('search');
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
 
     if (query) {
       // Search Mode
-      const results = searchRecordings(query);
+      const results = await searchRecordings(query);
 
       // Convert to file items format
       const items = results.map(rec => ({
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
     } else {
       // Navigation Mode
       const pathSegments = pathParam.split('/').filter(Boolean);
-      const { folders, files } = getRecordingsByPath(pathSegments);
+      const { folders, files } = await getRecordingsByPath(pathSegments);
 
       // Convert folders to items
       const folderItems = folders.map(name => ({

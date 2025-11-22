@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
     const limit = parseInt(searchParams.get('limit') || '10');
 
-    const recordings = getRecentRecordings(limit);
+    const recordings = await getRecentRecordings(limit);
 
     return NextResponse.json({
       success: true,
