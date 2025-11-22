@@ -147,38 +147,38 @@ export async function getRecordingsByPath(pathSegments: string[]): Promise<{
   const store = await readMetadata();
 
   if (pathSegments.length === 0) {
-    // Root level: return unique dates
-    const dates = [...new Set(store.recordings.map((r: RecordingMetadata) => r.date))].sort().reverse();
-    return { folders: dates, files: [] };
-  }
-
-  if (pathSegments.length === 1) {
-    // Date level: return unique order IDs for this date
-    const [date] = pathSegments;
-    const orderIds = [...new Set(
-      store.recordings
-        .filter((r: RecordingMetadata) => r.date === date)
-        .map((r: RecordingMetadata) => r.orderId)
-    )].sort();
+    // Root level: return unique order IDs
+    const orderIds = [...new Set(store.recordings.map((r: RecordingMetadata) => r.orderId))].sort();
     return { folders: orderIds, files: [] };
   }
 
-  if (pathSegments.length === 2) {
-    // Order level: return unique SKU IDs for this date/order
-    const [date, orderId] = pathSegments;
+  if (pathSegments.length === 1) {
+    // Order level: return unique SKU IDs for this order
+    const [orderId] = pathSegments;
     const skuIds = [...new Set(
       store.recordings
-        .filter((r: RecordingMetadata) => r.date === date && r.orderId === orderId)
+        .filter((r: RecordingMetadata) => r.orderId === orderId)
         .map((r: RecordingMetadata) => r.skuId)
     )].sort();
     return { folders: skuIds, files: [] };
   }
 
+  if (pathSegments.length === 2) {
+    // SKU level: return unique dates for this order/SKU
+    const [orderId, skuId] = pathSegments;
+    const dates = [...new Set(
+      store.recordings
+        .filter((r: RecordingMetadata) => r.orderId === orderId && r.skuId === skuId)
+        .map((r: RecordingMetadata) => r.date)
+    )].sort().reverse(); // Most recent first
+    return { folders: dates, files: [] };
+  }
+
   if (pathSegments.length === 3) {
-    // SKU level: return files for this date/order/sku
-    const [date, orderId, skuId] = pathSegments;
+    // Date level: return files for this order/SKU/date
+    const [orderId, skuId, date] = pathSegments;
     const files = store.recordings.filter(
-      (r: RecordingMetadata) => r.date === date && r.orderId === orderId && r.skuId === skuId
+      (r: RecordingMetadata) => r.orderId === orderId && r.skuId === skuId && r.date === date
     );
     return { folders: [], files };
   }
@@ -206,9 +206,9 @@ export async function migrateLocalRecordings(localPath: string): Promise<number>
       if (item.isDirectory()) {
         scanDirectory(fullPath, [...pathParts, item.name]);
       } else if (item.name.match(/\.(webm|mp4)$/)) {
-        // Extract metadata from path structure: date/orderId/skuId/filename
+        // Extract metadata from path structure: orderId/skuId/date/filename
         if (pathParts.length >= 3) {
-          const [date, orderId, skuId] = pathParts;
+          const [orderId, skuId, date] = pathParts;
           const relativePath = path.relative(localPath, fullPath);
 
           // Check if already in metadata
