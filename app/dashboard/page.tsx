@@ -25,35 +25,66 @@ export default function DashboardPage() {
   const [selectedVideo, setSelectedVideo] = useState<FileItem | null>(null);
   const [mode, setMode] = useState<'list' | 'search'>('list');
 
-  const fetchData = useCallback(async (path: string, searchQuery: string) => {
-    setLoading(true);
+  // Pagination state
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  const fetchData = useCallback(async (path: string, searchQuery: string, currentOffset: number = 0, append: boolean = false) => {
+    if (!append) setLoading(true);
+    else setIsLoadingMore(true);
+
     try {
       const params = new URLSearchParams();
       if (searchQuery) {
         params.append('search', searchQuery);
       } else {
         params.append('path', path);
+        params.append('limit', '20');
+        params.append('offset', currentOffset.toString());
       }
 
       const res = await fetch(`/api/recordings?${params.toString()}`);
       const data = await res.json();
 
-      setItems(data.items || []);
+      if (append) {
+        setItems(prev => [...prev, ...(data.items || [])]);
+      } else {
+        setItems(data.items || []);
+      }
+
       setMode(data.mode);
+      setHasMore(data.hasMore);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+      setIsLoadingMore(false);
     }
   }, []);
 
-  // Debounce search
+  // Initial load & Search change
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchData(currentPath, search);
+      setOffset(0);
+      fetchData(currentPath, search, 0, false);
     }, 300);
     return () => clearTimeout(timer);
   }, [search, currentPath, fetchData]);
+
+  const loadMore = () => {
+    if (!hasMore || isLoadingMore || search) return;
+    const newOffset = offset + 20;
+    setOffset(newOffset);
+    fetchData(currentPath, search, newOffset, true);
+  };
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop <= clientHeight + 100) { // Load when near bottom
+      loadMore();
+    }
+  };
 
   const handleNavigate = (path: string) => {
     setSearch(''); // Clear search when navigating
@@ -69,10 +100,10 @@ export default function DashboardPage() {
   return (
     <main className="p-8 text-gray-900 dark:text-white h-screen flex flex-col overflow-hidden transition-colors duration-300">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Recordings Explorer</h1>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold">Recordings Explorer</h1>
 
-        <div className="relative w-96">
+        <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"
@@ -86,7 +117,7 @@ export default function DashboardPage() {
 
       {/* Breadcrumbs (Only in List Mode) */}
       {mode === 'list' && (
-        <div className="flex items-center gap-2 mb-6 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-900/30 p-3 rounded-lg border border-gray-200 dark:border-gray-800">
+        <div className="flex items-center gap-2 mb-6 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-900/30 p-3 rounded-lg border border-gray-200 dark:border-gray-800 overflow-x-auto whitespace-nowrap">
           <button
             onClick={() => handleNavigate('')}
             className="hover:text-gray-900 dark:hover:text-white flex items-center gap-1 transition-colors"
@@ -110,7 +141,10 @@ export default function DashboardPage() {
       )}
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto pr-2">
+      <div
+        className="flex-1 overflow-y-auto pr-2"
+        onScroll={handleScroll}
+      >
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <Loader2 className="animate-spin text-blue-500" size={32} />
@@ -159,6 +193,12 @@ export default function DashboardPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {isLoadingMore && (
+          <div className="py-4 flex justify-center">
+            <Loader2 className="animate-spin text-blue-500" size={24} />
           </div>
         )}
       </div>

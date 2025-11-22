@@ -64,7 +64,7 @@ function listDirectory(basePath: string, relativePath: string) {
 
     const items = fs.readdirSync(targetPath, { withFileTypes: true });
 
-    return items.map(item => {
+    const mappedItems = items.map(item => {
         const itemPath = path.join(relativePath, item.name);
         return {
             name: item.name,
@@ -73,6 +73,16 @@ function listDirectory(basePath: string, relativePath: string) {
             fullPath: path.join(targetPath, item.name)
         };
     }).filter(item => item.type === 'folder' || item.name.endsWith('.webm'));
+
+    // Sort: Folders first, then Files (alphabetical)
+    mappedItems.sort((a, b) => {
+        if (a.type === b.type) {
+            return a.name.localeCompare(b.name);
+        }
+        return a.type === 'folder' ? -1 : 1;
+    });
+
+    return mappedItems;
 }
 
 export async function GET(req: NextRequest) {
@@ -83,16 +93,32 @@ export async function GET(req: NextRequest) {
 
     const storagePath = getStoragePath();
 
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const offset = parseInt(searchParams.get('offset') || '0');
+
     if (query) {
-        // Search Mode
+        // Search Mode - Return ALL results (ignore limit/offset for search as requested)
         const results = searchFiles(storagePath, query);
         // Sort by date descending
         results.sort((a, b) => b.date.localeCompare(a.date));
-        return NextResponse.json({ mode: 'search', items: results });
+        return NextResponse.json({
+            mode: 'search',
+            items: results,
+            total: results.length
+        });
     } else {
-        // Navigation Mode
-        const items = listDirectory(storagePath, dir);
-        return NextResponse.json({ mode: 'list', items, currentPath: dir });
+        // Navigation Mode - Apply Pagination
+        const allItems = listDirectory(storagePath, dir);
+        const total = allItems.length;
+        const paginatedItems = allItems.slice(offset, offset + limit);
+
+        return NextResponse.json({
+            mode: 'list',
+            items: paginatedItems,
+            currentPath: dir,
+            total,
+            hasMore: offset + limit < total
+        });
     }
 
   } catch (error) {

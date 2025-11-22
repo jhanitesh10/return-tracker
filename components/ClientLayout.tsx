@@ -6,8 +6,35 @@ import { Sidebar } from "@/components/Sidebar"
 import { cn } from "@/lib/utils"
 import { ThemeProvider } from "@/components/theme-provider"
 
+import { usePathname } from "next/navigation"
+
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true)
+  const pathname = usePathname()
+
+  // Auto-close sidebar on mobile when route changes
+  React.useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setIsSidebarOpen(false)
+      } else {
+        setIsSidebarOpen(true)
+      }
+    }
+
+    // Initial check
+    handleResize()
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  // Close on navigation (mobile only)
+  React.useEffect(() => {
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false)
+    }
+  }, [pathname])
 
   return (
     <ThemeProvider
@@ -17,6 +44,14 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
       disableTransitionOnChange
     >
       <div className="flex min-h-screen bg-white dark:bg-[#0a0a0a] transition-colors duration-300 relative">
+        {/* Mobile Backdrop */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
         {/* Sidebar */}
         <div
           className={cn(
