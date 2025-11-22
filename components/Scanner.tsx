@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { cn } from '@/lib/utils';
 import { Scan, X } from 'lucide-react';
 
@@ -21,7 +21,30 @@ export function Scanner({ onScan, label, value, onChange, className }: ScannerPr
     if (isScanning && !scannerRef.current) {
       const scanner = new Html5QrcodeScanner(
         `reader-${label.replace(/\s+/g, '-')}`,
-        { fps: 10, qrbox: { width: 250, height: 250 } },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          formatsToSupport: [
+            // QR Codes
+            Html5QrcodeSupportedFormats.QR_CODE,
+
+            // Common 1D Barcodes
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.CODE_93,
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.ITF,
+
+            // Additional formats
+            Html5QrcodeSupportedFormats.CODABAR,
+            Html5QrcodeSupportedFormats.DATA_MATRIX,
+            Html5QrcodeSupportedFormats.PDF_417,
+            Html5QrcodeSupportedFormats.AZTEC
+          ]
+        },
         /* verbose= */ false
       );
 
@@ -75,7 +98,7 @@ export function Scanner({ onScan, label, value, onChange, className }: ScannerPr
               ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
               : "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"
           )}
-          title={isScanning ? "Stop Scanning" : "Scan Barcode"}
+          title={isScanning ? "Stop Scanning" : "Scan QR Code or Barcode"}
         >
           {isScanning ? <X size={20} /> : <Scan size={20} />}
         </button>
