@@ -46,7 +46,11 @@ The `lib/config.ts` utility automatically detects the environment:
 
 ```typescript
 function isNetlify(): boolean {
-  return !!process.env.NETLIFY;
+  return !!(
+    process.env.NETLIFY ||
+    process.env.NETLIFY_DEV ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME
+  );
 }
 ```
 
