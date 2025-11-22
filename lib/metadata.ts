@@ -35,25 +35,30 @@ function isNetlify(): boolean {
 export async function readMetadata(): Promise<MetadataStore> {
   // Use Netlify Blobs in production
   if (isNetlify()) {
+    console.log('🔵 Running on Netlify, using Blobs storage');
     try {
       const store = getStore('metadata');
       const data = await store.get(METADATA_BLOB_KEY, { type: 'json' });
       if (data) {
+        console.log('✅ Metadata loaded from Netlify Blobs');
         return data as MetadataStore;
       }
+      console.log('⚠️ No metadata found in Netlify Blobs, returning empty store');
     } catch (error) {
-      console.error('Error reading from Netlify Blobs:', error);
+      console.error('❌ Error reading from Netlify Blobs:', error);
     }
     return { recordings: [], lastUpdated: Date.now() };
   }
 
+  console.log('🟢 Running locally, using filesystem');
   // Use local file in development
   if (fs.existsSync(METADATA_FILE)) {
     try {
       const data = fs.readFileSync(METADATA_FILE, 'utf-8');
+      console.log('✅ Metadata loaded from local file');
       return JSON.parse(data);
     } catch (error) {
-      console.error('Error reading local metadata:', error);
+      console.error('❌ Error reading local metadata:', error);
     }
   }
 
@@ -71,18 +76,21 @@ export async function writeMetadata(store: MetadataStore): Promise<void> {
     try {
       const blobStore = getStore('metadata');
       await blobStore.setJSON(METADATA_BLOB_KEY, store);
+      console.log('✅ Metadata saved to Netlify Blobs');
       return;
     } catch (error) {
-      console.error('Error writing to Netlify Blobs:', error);
-      throw error;
+      console.error('❌ Error writing to Netlify Blobs:', error);
+      // Don't fallback to filesystem on Netlify - it's read-only!
+      throw new Error('Failed to write metadata to Netlify Blobs: ' + (error as Error).message);
     }
   }
 
-  // Use local file in development
+  // Use local file in development only
   try {
     fs.writeFileSync(METADATA_FILE, JSON.stringify(store, null, 2));
+    console.log('✅ Metadata saved to local file');
   } catch (error) {
-    console.error('Error writing local metadata:', error);
+    console.error('❌ Error writing local metadata:', error);
     throw error;
   }
 }
