@@ -132,6 +132,7 @@ export function Recorder({ orderId, skuId, className, onSaveSuccess }: RecorderP
       formData.append('file', blob);
       formData.append('orderId', orderId);
       formData.append('skuId', skuId);
+      formData.append('mimeType', recordedMimeType);
 
       const response = await fetch('/api/save-video', {
         method: 'POST',

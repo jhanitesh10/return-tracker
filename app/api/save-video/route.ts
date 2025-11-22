@@ -28,7 +28,19 @@ function getStorageConfig(): StorageConfig {
   };
 }
 
-async function saveToLocal(file: File, orderId: string, skuId: string, config: StorageConfig) {
+function getFileExtension(mimeType?: string): string {
+  if (!mimeType) return 'webm';
+  if (mimeType.includes('mp4')) return 'mp4';
+  return 'webm';
+}
+
+async function saveToLocal(
+  file: File,
+  orderId: string,
+  skuId: string,
+  config: StorageConfig,
+  mimeType?: string
+) {
   const date = new Date().toISOString().split('T')[0];
   const baseDir = config.localPath || path.join(process.cwd(), 'recordings');
   const uploadDir = path.join(baseDir, date, orderId, skuId);
@@ -38,7 +50,8 @@ async function saveToLocal(file: File, orderId: string, skuId: string, config: S
   }
 
   const timestamp = Date.now();
-  const filename = `recording_${timestamp}.webm`;
+  const ext = getFileExtension(mimeType);
+  const filename = `recording_${timestamp}.${ext}`;
   const filePath = path.join(uploadDir, filename);
 
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -91,12 +104,13 @@ export async function POST(req: NextRequest) {
     }
 
     const config = getStorageConfig();
+    const mimeType = formData.get('mimeType') as string | null;
 
     let result;
     if (config.storageType === 'url') {
       result = await saveToUrl(file, orderId, skuId, config);
     } else {
-      result = await saveToLocal(file, orderId, skuId, config);
+      result = await saveToLocal(file, orderId, skuId, config, mimeType || undefined);
     }
 
     return NextResponse.json(result);
