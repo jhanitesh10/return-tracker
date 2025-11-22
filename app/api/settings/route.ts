@@ -1,46 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
-
-const CONFIG_FILE = path.join(process.cwd(), 'config.json');
-
-interface StorageConfig {
-  storageType: 'local' | 'url' | 'storj';
-  localPath?: string;
-  saveUrl?: string;
-  readUrl?: string;
-  apiKey?: string;
-  // Storj S3-compatible fields
-  storjAccessKey?: string;
-  storjSecretKey?: string;
-  storjEndpoint?: string;
-  storjBucket?: string;
-  // Video recording constraints
-  maxDuration?: number; // Maximum recording duration in seconds
-  maxFileSize?: number; // Maximum file size in MB
-}
+import { getStorageConfig, saveStorageConfig, StorageConfig } from '@/lib/config';
 
 export async function GET() {
   try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
-      return NextResponse.json(config);
-    }
-    // Default config
-    return NextResponse.json({
-      storageType: 'local',
-      localPath: path.join(process.cwd(), 'recordings'),
-      saveUrl: '',
-      readUrl: '',
-      apiKey: '',
-      storjAccessKey: '',
-      storjSecretKey: '',
-      storjEndpoint: '',
-      storjBucket: '',
-      maxDuration: 300, // 5 minutes default
-      maxFileSize: 100  // 100 MB default
-    });
+    const config = await getStorageConfig();
+    return NextResponse.json(config);
   } catch (error) {
+    console.error('Error loading settings:', error);
     return NextResponse.json({ error: 'Failed to load settings' }, { status: 500 });
   }
 }
@@ -126,7 +94,7 @@ export async function POST(req: NextRequest) {
       maxFileSize: maxFileSize || 100
     };
 
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+    await saveStorageConfig(config);
     return NextResponse.json({ success: true, ...config });
   } catch (error) {
     console.error('Settings save error:', error);

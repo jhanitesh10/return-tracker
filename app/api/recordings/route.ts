@@ -7,20 +7,7 @@ import {
   migrateLocalRecordings,
   readMetadata
 } from '@/lib/metadata';
-
-const CONFIG_FILE = path.join(process.cwd(), 'config.json');
-
-function getStoragePath() {
-  if (fs.existsSync(CONFIG_FILE)) {
-    try {
-      const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
-      if (config.localPath) return config.localPath;
-    } catch (e) {
-      console.error("Error reading config", e);
-    }
-  }
-  return path.join(process.cwd(), 'recordings');
-}
+import { getStoragePath } from '@/lib/config';
 
 // Auto-migrate existing local recordings on first access
 let migrationDone = false;
@@ -29,7 +16,7 @@ async function ensureMigration() {
     const store = await readMetadata();
     if (store.recordings.length === 0) {
       // No metadata yet, try to migrate local recordings
-      const localPath = getStoragePath();
+      const localPath = await getStoragePath();
       const count = await migrateLocalRecordings(localPath);
       if (count > 0) {
         console.log(`Migrated ${count} existing recordings to metadata`);

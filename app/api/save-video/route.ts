@@ -3,37 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { addRecording } from '@/lib/metadata';
-
-const CONFIG_FILE = path.join(process.cwd(), 'config.json');
-
-interface StorageConfig {
-  storageType: 'local' | 'url' | 'storj';
-  localPath?: string;
-  saveUrl?: string;
-  readUrl?: string;
-  apiKey?: string;
-  // Storj S3-compatible fields
-  storjAccessKey?: string;
-  storjSecretKey?: string;
-  storjEndpoint?: string;
-  storjBucket?: string;
-}
-
-function getStorageConfig(): StorageConfig {
-  if (fs.existsSync(CONFIG_FILE)) {
-    try {
-      const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
-      return config;
-    } catch (e) {
-      console.error("Error reading config", e);
-    }
-  }
-  // Default to local storage
-  return {
-    storageType: 'local',
-    localPath: path.join(process.cwd(), 'recordings')
-  };
-}
+import { getStorageConfig, StorageConfig } from '@/lib/config';
 
 function getFileExtension(mimeType?: string): string {
   if (!mimeType) return 'webm';
@@ -207,7 +177,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const config = getStorageConfig();
+    const config = await getStorageConfig();
     const mimeType = formData.get('mimeType') as string | null;
 
     let result;

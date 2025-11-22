@@ -1,6 +1,28 @@
 {
   "recordings": [
     {
+      "orderId": "nj_order_id",
+      "skuId": "nj_sku_id",
+      "date": "2025-11-22",
+      "timestamp": 1763848101168,
+      "storageType": "storj",
+      "path": "nj_order_id/nj_sku_id/2025-11-22/recording_1763848101168.webm",
+      "url": "https://gateway.storjshare.io/return-tracker/nj_order_id/nj_sku_id/2025-11-22/recording_1763848101168.webm",
+      "filename": "recording_1763848101168.webm",
+      "mimeType": "video/webm;codecs=vp9"
+    },
+    {
+      "orderId": "asdf",
+      "skuId": "asdf",
+      "date": "2025-11-22",
+      "timestamp": 1763848071243,
+      "storageType": "storj",
+      "path": "asdf/asdf/2025-11-22/recording_1763848071243.webm",
+      "url": "https://gateway.storjshare.io/return-tracker/asdf/asdf/2025-11-22/recording_1763848071243.webm",
+      "filename": "recording_1763848071243.webm",
+      "mimeType": "video/webm;codecs=vp9"
+    },
+    {
       "orderId": "asdf",
       "skuId": "sadf",
       "date": "2025-11-22",
@@ -78,5 +100,5 @@
       "mimeType": "video/webm;codecs=vp9"
     }
   ],
-  "lastUpdated": 1763846425852
+  "lastUpdated": 1763848102512
 }

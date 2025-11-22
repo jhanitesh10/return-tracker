@@ -4,37 +4,7 @@ import path from 'path';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { readMetadata } from '@/lib/metadata';
-
-const CONFIG_FILE = path.join(process.cwd(), 'config.json');
-
-interface StorageConfig {
-  storageType: 'local' | 'url' | 'storj';
-  localPath?: string;
-  storjAccessKey?: string;
-  storjSecretKey?: string;
-  storjEndpoint?: string;
-  storjBucket?: string;
-}
-
-function getStorageConfig(): StorageConfig {
-  if (fs.existsSync(CONFIG_FILE)) {
-    try {
-      const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
-      return config;
-    } catch (e) {
-      console.error("Error reading config", e);
-    }
-  }
-  return {
-    storageType: 'local',
-    localPath: path.join(process.cwd(), 'recordings')
-  };
-}
-
-function getStoragePath() {
-  const config = getStorageConfig();
-  return config.localPath || path.join(process.cwd(), 'recordings');
-}
+import { getStorageConfig, getStoragePath } from '@/lib/config';
 
 export async function GET(req: NextRequest) {
   try {
@@ -52,7 +22,7 @@ export async function GET(req: NextRequest) {
     if (recording) {
       // Handle Storj storage - generate signed URL
       if (recording.storageType === 'storj') {
-        const config = getStorageConfig();
+        const config = await getStorageConfig();
 
         if (!config.storjAccessKey || !config.storjSecretKey || !config.storjEndpoint || !config.storjBucket) {
           return NextResponse.json({ error: 'Storj configuration incomplete' }, { status: 500 });
@@ -92,7 +62,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Otherwise, stream from local file
-    const storagePath = getStoragePath();
+    const storagePath = await getStoragePath();
     const absolutePath = path.join(storagePath, filePath);
 
     // Security check: prevent directory traversal
