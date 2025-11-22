@@ -1,42 +1,121 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { readMetadata } from '@/lib/metadata';
+
+const CONFIG_FILE = path.join(process.cwd(), 'config.json');
+
+interface StorageConfig {
+  storageType: 'local' | 'url' | 'storj';
+  localPath?: string;
+  storjAccessKey?: string;
+  storjSecretKey?: string;
+  storjEndpoint?: string;
+  storjBucket?: string;
+}
+
+function getStorageConfig(): StorageConfig {
+  if (fs.existsSync(CONFIG_FILE)) {
+    try {
+      const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+      return config;
+    } catch (e) {
+      console.error("Error reading config", e);
+    }
+  }
+  return {
+    storageType: 'local',
+    localPath: path.join(process.cwd(), 'recordings')
+  };
+}
+
+function getStoragePath() {
+  const config = getStorageConfig();
+  return config.localPath || path.join(process.cwd(), 'recordings');
+}
 
 export async function GET(req: NextRequest) {
-  const searchParams = req.nextUrl.searchParams;
-  const filePath = searchParams.get('path');
-
-  if (!filePath) {
-    return NextResponse.json({ error: 'Path is required' }, { status: 400 });
-  }
-
   try {
-    // Security check: Ensure the file exists and is a video
-    if (!fs.existsSync(filePath) || !filePath.endsWith('.webm')) {
-      return NextResponse.json({ error: 'File not found or invalid type' }, { status: 404 });
+    const searchParams = req.nextUrl.searchParams;
+    const filePath = searchParams.get('path');
+
+    if (!filePath) {
+      return NextResponse.json({ error: 'Path is required' }, { status: 400 });
     }
 
-    const stat = fs.statSync(filePath);
+    // Check if this is a URL or Storj path in metadata
+    const metadata = readMetadata();
+    const recording = metadata.recordings.find(r => r.path === filePath);
+
+    if (recording) {
+      // Handle Storj storage - generate signed URL
+      if (recording.storageType === 'storj') {
+        const config = getStorageConfig();
+
+        if (!config.storjAccessKey || !config.storjSecretKey || !config.storjEndpoint || !config.storjBucket) {
+          return NextResponse.json({ error: 'Storj configuration incomplete' }, { status: 500 });
+        }
+
+        try {
+          const s3Client = new S3Client({
+            endpoint: config.storjEndpoint,
+            region: 'auto',
+            credentials: {
+              accessKeyId: config.storjAccessKey,
+              secretAccessKey: config.storjSecretKey,
+            },
+            forcePathStyle: true,
+          });
+
+          const command = new GetObjectCommand({
+            Bucket: config.storjBucket,
+            Key: recording.path,
+          });
+
+          // Generate signed URL valid for 1 hour
+          const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+
+          // Redirect to signed URL
+          return NextResponse.redirect(signedUrl);
+        } catch (error) {
+          console.error('Error generating Storj signed URL:', error);
+          return NextResponse.json({ error: 'Failed to generate signed URL' }, { status: 500 });
+        }
+      }
+
+      // Handle URL storage - redirect to URL
+      if (recording.storageType === 'url' && recording.url) {
+        return NextResponse.redirect(recording.url);
+      }
+    }
+
+    // Otherwise, stream from local file
+    const storagePath = getStoragePath();
+    const absolutePath = path.join(storagePath, filePath);
+
+    // Security check: prevent directory traversal
+    if (!absolutePath.startsWith(storagePath)) {
+      return NextResponse.json({ error: 'Invalid path' }, { status: 403 });
+    }
+
+    if (!fs.existsSync(absolutePath)) {
+      return NextResponse.json({ error: 'File not found' }, { status: 404 });
+    }
+
+    const stat = fs.statSync(absolutePath);
     const fileSize = stat.size;
     const range = req.headers.get('range');
 
     if (range) {
-      const parts = range.replace(/bytes=/, "").split("-");
+      const parts = range.replace(/bytes=/, '').split('-');
       const start = parseInt(parts[0], 10);
       const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
       const chunksize = (end - start) + 1;
-      const file = fs.createReadStream(filePath, { start, end });
+      const file = fs.createReadStream(absolutePath, { start, end });
 
-      // Convert ReadStream to ReadableStream for NextResponse
-      const stream = new ReadableStream({
-        start(controller) {
-          file.on('data', (chunk) => controller.enqueue(chunk));
-          file.on('end', () => controller.close());
-          file.on('error', (err) => controller.error(err));
-        }
-      });
-
-      return new NextResponse(stream, {
+      return new NextResponse(file as any, {
         status: 206,
         headers: {
           'Content-Range': `bytes ${start}-${end}/${fileSize}`,
@@ -46,18 +125,8 @@ export async function GET(req: NextRequest) {
         },
       });
     } else {
-      const file = fs.createReadStream(filePath);
-
-      const stream = new ReadableStream({
-        start(controller) {
-          file.on('data', (chunk) => controller.enqueue(chunk));
-          file.on('end', () => controller.close());
-          file.on('error', (err) => controller.error(err));
-        }
-      });
-
-      return new NextResponse(stream, {
-        status: 200,
+      const file = fs.createReadStream(absolutePath);
+      return new NextResponse(file as any, {
         headers: {
           'Content-Length': fileSize.toString(),
           'Content-Type': 'video/webm',
@@ -66,6 +135,6 @@ export async function GET(req: NextRequest) {
     }
   } catch (error) {
     console.error('Error streaming video:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to stream video' }, { status: 500 });
   }
 }

@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { addRecording } from '@/lib/metadata';
 
 const CONFIG_FILE = path.join(process.cwd(), 'config.json');
 
 interface StorageConfig {
-  storageType: 'local' | 'url';
+  storageType: 'local' | 'url' | 'storj';
   localPath?: string;
   saveUrl?: string;
   readUrl?: string;
   apiKey?: string;
+  // Storj S3-compatible fields
+  storjAccessKey?: string;
+  storjSecretKey?: string;
+  storjEndpoint?: string;
+  storjBucket?: string;
 }
 
 function getStorageConfig(): StorageConfig {
@@ -57,6 +64,20 @@ async function saveToLocal(
   const buffer = Buffer.from(await file.arrayBuffer());
   fs.writeFileSync(filePath, buffer);
 
+  const relativePath = path.relative(baseDir, filePath);
+
+  // Save metadata
+  addRecording({
+    orderId,
+    skuId,
+    date,
+    timestamp,
+    storageType: 'local',
+    path: relativePath,
+    filename,
+    mimeType: file.type || mimeType
+  });
+
   return { success: true, path: filePath, storage: 'local' };
 }
 
@@ -89,7 +110,89 @@ async function saveToUrl(file: File, orderId: string, skuId: string, config: Sto
   }
 
   const result = await response.json();
+  const date = new Date().toISOString().split('T')[0];
+  const timestamp = Date.now();
+
+  // Save metadata
+  addRecording({
+    orderId,
+    skuId,
+    date,
+    timestamp,
+    storageType: 'url',
+    path: result.path || result.url || '',
+    url: result.url || config.saveUrl,
+    filename: result.filename || file.name,
+    mimeType: file.type
+  });
+
   return { success: true, ...result, storage: 'url' };
+}
+
+async function saveToStorj(
+  file: File,
+  orderId: string,
+  skuId: string,
+  config: StorageConfig,
+  mimeType?: string
+) {
+  if (!config.storjAccessKey || !config.storjSecretKey || !config.storjEndpoint || !config.storjBucket) {
+    throw new Error('Storj configuration incomplete');
+  }
+
+  // Initialize S3 client with Storj credentials
+  const s3Client = new S3Client({
+    endpoint: config.storjEndpoint,
+    region: 'auto', // Storj uses 'auto' for region
+    credentials: {
+      accessKeyId: config.storjAccessKey,
+      secretAccessKey: config.storjSecretKey,
+    },
+    forcePathStyle: true, // Required for S3-compatible services
+  });
+
+  const date = new Date().toISOString().split('T')[0];
+  const timestamp = Date.now();
+  const ext = getFileExtension(mimeType);
+  const filename = `recording_${timestamp}.${ext}`;
+
+  // Create S3 key path: date/orderId/skuId/filename
+  const key = `${date}/${orderId}/${skuId}/${filename}`;
+
+  // Convert file to buffer
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  // Upload to Storj
+  const command = new PutObjectCommand({
+    Bucket: config.storjBucket,
+    Key: key,
+    Body: buffer,
+    ContentType: file.type || 'video/webm',
+  });
+
+  await s3Client.send(command);
+
+  const fileUrl = `${config.storjEndpoint}/${config.storjBucket}/${key}`;
+
+  // Save metadata
+  addRecording({
+    orderId,
+    skuId,
+    date,
+    timestamp,
+    storageType: 'storj',
+    path: key,
+    url: fileUrl,
+    filename,
+    mimeType: file.type || mimeType
+  });
+
+  return {
+    success: true,
+    path: key,
+    url: fileUrl,
+    storage: 'storj'
+  };
 }
 
 export async function POST(req: NextRequest) {
@@ -109,6 +212,8 @@ export async function POST(req: NextRequest) {
     let result;
     if (config.storageType === 'url') {
       result = await saveToUrl(file, orderId, skuId, config);
+    } else if (config.storageType === 'storj') {
+      result = await saveToStorj(file, orderId, skuId, config, mimeType || undefined);
     } else {
       result = await saveToLocal(file, orderId, skuId, config, mimeType || undefined);
     }

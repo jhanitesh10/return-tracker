@@ -56,29 +56,34 @@ export default function Home() {
   const [skuId, setSkuId] = useState('');
   const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('recentScans');
-    if (saved) {
-      try {
-        setRecentScans(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to parse recent scans', e);
+  // Fetch recent scans from API instead of localStorage
+  const fetchRecentScans = async () => {
+    try {
+      const res = await fetch('/api/recent-scans?limit=5');
+      const data = await res.json();
+      if (data.success && data.recordings) {
+        // Convert metadata format to RecentScan format
+        const scans = data.recordings.map((rec: any) => ({
+          orderId: rec.orderId,
+          skuId: rec.skuId,
+          timestamp: rec.timestamp
+        }));
+        setRecentScans(scans);
       }
+    } catch (error) {
+      console.error('Failed to fetch recent scans:', error);
     }
+  };
+
+  useEffect(() => {
+    fetchRecentScans();
   }, []);
 
   const addRecentScan = () => {
-    const newScan: RecentScan = {
-      orderId,
-      skuId,
-      timestamp: Date.now(),
-    };
+    // Refresh recent scans from API after successful save
+    fetchRecentScans();
 
-    const updated = [newScan, ...recentScans].slice(0, 5); // Keep last 5
-    setRecentScans(updated);
-    localStorage.setItem('recentScans', JSON.stringify(updated));
-
-    // Clear inputs after successful save (optional, but good UX)
+    // Clear inputs after successful save
     setOrderId('');
     setSkuId('');
   };
