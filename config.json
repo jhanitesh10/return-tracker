@@ -1,3 +1,7 @@
 {
-  "storagePath": "/Users/niteshjha/personal/github/return-tracker/recordings"
+  "storageType": "local",
+  "localPath": "/Users/niteshjha/personal/github/return-tracker/recordings",
+  "saveUrl": "",
+  "readUrl": "",
+  "apiKey": ""
 }
