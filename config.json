@@ -1,13 +1,13 @@
 {
-  "storageType": "storj",
-  "localPath": "",
+  "storageType": "local",
+  "localPath": "/Users/niteshjha/Desktop/recording/",
   "saveUrl": "",
   "readUrl": "",
   "apiKey": "",
-  "storjAccessKey": "jwbz2sy4jbhkqms2vqn2dkbaqigq",
-  "storjSecretKey": "j3aoeaqx7wwnn6a6il4zthgptp3okinfdpxam2pwlarlmegv3kfxg",
-  "storjEndpoint": "https://gateway.storjshare.io",
-  "storjBucket": "return-tracker",
+  "storjAccessKey": "",
+  "storjSecretKey": "",
+  "storjEndpoint": "",
+  "storjBucket": "",
   "maxDuration": 300,
   "maxFileSize": 100
 }

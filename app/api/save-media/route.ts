@@ -8,6 +8,8 @@ import { getStorageConfig, StorageConfig } from '@/lib/config';
 function getFileExtension(mimeType?: string): string {
   if (!mimeType) return 'webm';
   if (mimeType.includes('mp4')) return 'mp4';
+  if (mimeType.includes('jpeg') || mimeType.includes('jpg')) return 'jpg';
+  if (mimeType.includes('png')) return 'png';
   return 'webm';
 }
 
@@ -143,7 +145,7 @@ async function saveToStorj(
     Bucket: config.storjBucket,
     Key: key,
     Body: buffer,
-    ContentType: file.type || 'video/webm',
+    ContentType: file.type || mimeType || 'application/octet-stream',
   });
 
   await s3Client.send(command);
@@ -200,7 +202,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Error saving video:', error);
     return NextResponse.json({
-      error: 'Failed to save video',
+      error: 'Failed to save media',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
