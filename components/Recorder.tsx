@@ -7,11 +7,12 @@ import { cn } from '@/lib/utils';
 interface RecorderProps {
   orderId: string;
   skuId: string;
+  notes?: string;
   className?: string;
   onSaveSuccess?: () => void;
 }
 
-export function Recorder({ orderId, skuId, className, onSaveSuccess }: RecorderProps) {
+export function Recorder({ orderId, skuId, notes, className, onSaveSuccess }: RecorderProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -118,8 +119,8 @@ export function Recorder({ orderId, skuId, className, onSaveSuccess }: RecorderP
   };
 
   const saveRecording = async () => {
-    if (!previewUrl || !orderId || !skuId) {
-      setError('Missing Order ID or SKU ID');
+    if (!previewUrl || !orderId) {
+      setError('Missing Order ID');
       return;
     }
 
@@ -131,7 +132,8 @@ export function Recorder({ orderId, skuId, className, onSaveSuccess }: RecorderP
       const formData = new FormData();
       formData.append('file', blob);
       formData.append('orderId', orderId);
-      formData.append('skuId', skuId);
+      if (skuId) formData.append('skuId', skuId);
+      if (notes) formData.append('notes', notes);
       formData.append('mimeType', recordedMimeType);
 
       const response = await fetch('/api/save-video', {
@@ -217,7 +219,7 @@ export function Recorder({ orderId, skuId, className, onSaveSuccess }: RecorderP
             <>
               <button
                 onClick={saveRecording}
-                disabled={isSaving || !orderId || !skuId}
+                disabled={isSaving || !orderId}
                 className="flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-900/20"
               >
                 {isSaving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
@@ -238,7 +240,7 @@ export function Recorder({ orderId, skuId, className, onSaveSuccess }: RecorderP
       </div>
 
       {/* Error / Warning Alert */}
-      {(error || (!orderId || !skuId)) && (
+      {(error || !orderId) && (
         <div className={cn(
           "p-4 rounded-xl border flex items-start gap-3 transition-all",
           error
@@ -253,7 +255,7 @@ export function Recorder({ orderId, skuId, className, onSaveSuccess }: RecorderP
               <>
                 <p className="font-medium">Missing Information</p>
                 <p className="opacity-90 mt-1">
-                  Please scan or enter both <strong>Order ID</strong> and <strong>SKU ID</strong> before saving the recording.
+                  Please scan or enter <strong>Order ID</strong> before saving the recording.
                 </p>
               </>
             )}

@@ -14,14 +14,15 @@ function getFileExtension(mimeType?: string): string {
 async function saveToLocal(
   file: File,
   orderId: string,
-  skuId: string,
+  skuId: string | undefined,
   config: StorageConfig,
-  mimeType?: string
+  mimeType?: string,
+  notes?: string
 ) {
   const date = new Date().toISOString().split('T')[0];
   const baseDir = config.localPath || path.join(process.cwd(), 'recordings');
   // New structure: orderId/skuId/date
-  const uploadDir = path.join(baseDir, orderId, skuId, date);
+  const uploadDir = path.join(baseDir, orderId, skuId || 'default', date);
 
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
@@ -41,6 +42,7 @@ async function saveToLocal(
   await addRecording({
     orderId,
     skuId,
+    notes,
     date,
     timestamp,
     storageType: 'local',
@@ -52,7 +54,7 @@ async function saveToLocal(
   return { success: true, path: filePath, storage: 'local' };
 }
 
-async function saveToUrl(file: File, orderId: string, skuId: string, config: StorageConfig) {
+async function saveToUrl(file: File, orderId: string, skuId: string | undefined, config: StorageConfig, notes?: string) {
   if (!config.saveUrl) {
     throw new Error('Save URL not configured');
   }
@@ -60,7 +62,8 @@ async function saveToUrl(file: File, orderId: string, skuId: string, config: Sto
   const formData = new FormData();
   formData.append('file', file);
   formData.append('orderId', orderId);
-  formData.append('skuId', skuId);
+  if (skuId) formData.append('skuId', skuId);
+  if (notes) formData.append('notes', notes);
   formData.append('date', new Date().toISOString().split('T')[0]);
   formData.append('timestamp', Date.now().toString());
 
@@ -88,6 +91,7 @@ async function saveToUrl(file: File, orderId: string, skuId: string, config: Sto
   await addRecording({
     orderId,
     skuId,
+    notes,
     date,
     timestamp,
     storageType: 'url',
@@ -103,9 +107,10 @@ async function saveToUrl(file: File, orderId: string, skuId: string, config: Sto
 async function saveToStorj(
   file: File,
   orderId: string,
-  skuId: string,
+  skuId: string | undefined,
   config: StorageConfig,
-  mimeType?: string
+  mimeType?: string,
+  notes?: string
 ) {
   if (!config.storjAccessKey || !config.storjSecretKey || !config.storjEndpoint || !config.storjBucket) {
     throw new Error('Storj configuration incomplete');
@@ -128,7 +133,7 @@ async function saveToStorj(
   const filename = `recording_${timestamp}.${ext}`;
 
   // Create S3 key path: orderId/skuId/date/filename
-  const key = `${orderId}/${skuId}/${date}/${filename}`;
+  const key = `${orderId}/${skuId || 'default'}/${date}/${filename}`;
 
   // Convert file to buffer
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -149,6 +154,7 @@ async function saveToStorj(
   await addRecording({
     orderId,
     skuId,
+    notes,
     date,
     timestamp,
     storageType: 'storj',
@@ -171,9 +177,10 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const orderId = formData.get('orderId') as string;
-    const skuId = formData.get('skuId') as string;
+    const skuId = formData.get('skuId') as string || undefined;
+    const notes = formData.get('notes') as string || undefined;
 
-    if (!file || !orderId || !skuId) {
+    if (!file || !orderId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -182,11 +189,11 @@ export async function POST(req: NextRequest) {
 
     let result;
     if (config.storageType === 'url') {
-      result = await saveToUrl(file, orderId, skuId, config);
+      result = await saveToUrl(file, orderId, skuId, config, notes);
     } else if (config.storageType === 'storj') {
-      result = await saveToStorj(file, orderId, skuId, config, mimeType || undefined);
+      result = await saveToStorj(file, orderId, skuId, config, mimeType || undefined, notes);
     } else {
-      result = await saveToLocal(file, orderId, skuId, config, mimeType || undefined);
+      result = await saveToLocal(file, orderId, skuId, config, mimeType || undefined, notes);
     }
 
     return NextResponse.json(result);

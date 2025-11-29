@@ -7,7 +7,8 @@ const METADATA_BLOB_KEY = 'recordings-metadata';
 
 export interface RecordingMetadata {
   orderId: string;
-  skuId: string;
+  skuId?: string;
+  notes?: string;
   date: string; // YYYY-MM-DD
   timestamp: number;
   storageType: 'local' | 'url' | 'storj';
@@ -125,7 +126,8 @@ export async function searchRecordings(query: string): Promise<RecordingMetadata
 
   return store.recordings.filter((rec: RecordingMetadata) =>
     rec.orderId.toLowerCase().includes(lowerQuery) ||
-    rec.skuId.toLowerCase().includes(lowerQuery) ||
+    (rec.skuId || '').toLowerCase().includes(lowerQuery) ||
+    (rec.notes || '').toLowerCase().includes(lowerQuery) ||
     rec.date.includes(lowerQuery)
   );
 }
@@ -170,7 +172,7 @@ export async function getRecordingsByPath(pathSegments: string[]): Promise<{
     const skuIds = [...new Set(
       store.recordings
         .filter((r: RecordingMetadata) => r.orderId === orderId)
-        .map((r: RecordingMetadata) => r.skuId)
+        .map((r: RecordingMetadata) => r.skuId || 'default')
     )].sort();
     return { folders: skuIds, files: [] };
   }

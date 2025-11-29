@@ -9,7 +9,8 @@ import { cn } from '@/lib/utils';
 
 interface RecentScan {
   orderId: string;
-  skuId: string;
+  skuId?: string;
+  notes?: string;
   timestamp: number;
 }
 
@@ -36,8 +37,13 @@ function RecentScansList({ scans }: { scans: RecentScan[] }) {
                   {scan.orderId}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  SKU: {scan.skuId}
+                  {scan.skuId ? `SKU: ${scan.skuId}` : 'No SKU'}
                 </p>
+                {scan.notes && (
+                  <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-0.5 italic">
+                    {scan.notes}
+                  </p>
+                )}
                 <div className="flex items-center gap-1 mt-1 text-[10px] text-gray-400">
                   <Clock size={10} />
                   <span>{new Date(scan.timestamp).toLocaleTimeString()}</span>
@@ -54,6 +60,7 @@ function RecentScansList({ scans }: { scans: RecentScan[] }) {
 export default function Home() {
   const [orderId, setOrderId] = useState('');
   const [skuId, setSkuId] = useState('');
+  const [notes, setNotes] = useState('');
   const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
 
   // Fetch recent scans from API instead of localStorage
@@ -66,6 +73,7 @@ export default function Home() {
         const scans = data.recordings.map((rec: any) => ({
           orderId: rec.orderId,
           skuId: rec.skuId,
+          notes: rec.notes,
           timestamp: rec.timestamp
         }));
         setRecentScans(scans);
@@ -86,6 +94,7 @@ export default function Home() {
     // Clear inputs after successful save
     setOrderId('');
     setSkuId('');
+    setNotes('');
   };
 
   return (
@@ -112,18 +121,28 @@ export default function Home() {
 
               <div className="space-y-6">
                 <Scanner
-                  label="Order ID"
+                  label="Order or PO ID"
                   value={orderId}
                   onChange={setOrderId}
                   onScan={setOrderId}
                 />
 
                 <Scanner
-                  label="SKU ID"
+                  label="SKU ID (Optional)"
                   value={skuId}
                   onChange={setSkuId}
                   onScan={setSkuId}
                 />
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Notes (Optional)</label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] resize-none"
+                    placeholder="Add any notes about this return..."
+                  />
+                </div>
               </div>
 
               <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/20 rounded-xl text-sm text-blue-700 dark:text-blue-300">
@@ -148,6 +167,7 @@ export default function Home() {
               <Recorder
                 orderId={orderId}
                 skuId={skuId}
+                notes={notes}
                 className="w-full"
                 onSaveSuccess={addRecentScan}
               />
