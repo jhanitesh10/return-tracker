@@ -30,9 +30,10 @@ async function saveToLocal(
     fs.mkdirSync(uploadDir, { recursive: true });
   }
 
-  const timestamp = Date.now();
+  const uniqueId = crypto.randomUUID();
   const ext = getFileExtension(mimeType);
-  const filename = `recording_${timestamp}.${ext}`;
+  const filename = `recording_${uniqueId}.${ext}`;
+  const timestamp = Date.now();
   const filePath = path.join(uploadDir, filename);
 
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -131,8 +132,9 @@ async function saveToStorj(
 
   const date = new Date().toISOString().split('T')[0];
   const timestamp = Date.now();
+  const uniqueId = crypto.randomUUID();
   const ext = getFileExtension(mimeType);
-  const filename = `recording_${timestamp}.${ext}`;
+  const filename = `recording_${uniqueId}.${ext}`;
 
   // Create S3 key path: orderId/skuId/date/filename
   const key = `${orderId}/${skuId || 'default'}/${date}/${filename}`;

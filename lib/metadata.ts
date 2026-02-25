@@ -101,12 +101,22 @@ export async function writeMetadata(store: MetadataStore): Promise<void> {
 }
 
 /**
- * Add a new recording to metadata
+ * Module-level write lock — serializes concurrent addRecording calls so that
+ * read-then-write is never interleaved between two simultaneous uploads.
+ */
+let writeLock: Promise<void> = Promise.resolve();
+
+/**
+ * Add a new recording to metadata (concurrency-safe).
+ * All writes are queued through a promise chain to prevent race conditions.
  */
 export async function addRecording(recording: RecordingMetadata): Promise<void> {
-  const store = await readMetadata();
-  store.recordings.unshift(recording); // Add to beginning
-  await writeMetadata(store);
+  writeLock = writeLock.then(async () => {
+    const store = await readMetadata();
+    store.recordings.unshift(recording); // Add to beginning
+    await writeMetadata(store);
+  });
+  await writeLock;
 }
 
 /**
