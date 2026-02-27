@@ -7,9 +7,18 @@ import { getStorageConfig, StorageConfig } from '@/lib/config';
 
 function getFileExtension(mimeType?: string): string {
   if (!mimeType) return 'webm';
-  if (mimeType.includes('mp4')) return 'mp4';
-  if (mimeType.includes('jpeg') || mimeType.includes('jpg')) return 'jpg';
-  if (mimeType.includes('png')) return 'png';
+  const lowerMimeType = mimeType.toLowerCase();
+
+  if (lowerMimeType.includes('mp4')) return 'mp4';
+  if (lowerMimeType.includes('jpeg') || lowerMimeType.includes('jpg')) return 'jpg';
+  if (lowerMimeType.includes('png')) return 'png';
+  if (lowerMimeType.includes('webm')) return 'webm';
+  if (lowerMimeType.includes('matroska') || lowerMimeType.includes('mkv')) return 'mkv';
+
+  // Fallbacks based on category
+  if (lowerMimeType.startsWith('image/')) return 'jpg';
+  if (lowerMimeType.startsWith('video/')) return 'webm';
+
   return 'webm';
 }
 

@@ -107,16 +107,39 @@ export async function writeMetadata(store: MetadataStore): Promise<void> {
 let writeLock: Promise<void> = Promise.resolve();
 
 /**
- * Add a new recording to metadata (concurrency-safe).
+ * Add a new recording to metadata (concurrency-safe with retries).
  * All writes are queued through a promise chain to prevent race conditions.
  */
 export async function addRecording(recording: RecordingMetadata): Promise<void> {
-  writeLock = writeLock.then(async () => {
-    const store = await readMetadata();
-    store.recordings.unshift(recording); // Add to beginning
-    await writeMetadata(store);
+  // Create a promise for this specific operation with retry logic
+  const operation = (async () => {
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const store = await readMetadata();
+        store.recordings.unshift(recording);
+        await writeMetadata(store);
+        return;
+      } catch (error) {
+        retries--;
+        console.warn(`Metadata write failed. Retries left: ${retries}`, error);
+        if (retries === 0) throw error;
+        // Exponential backoff
+        await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
+      }
+    }
   });
-  await writeLock;
+
+  const nextLock = writeLock.then(operation).catch(err => {
+    // Propagate the error so the await below catches it
+    throw err;
+  });
+
+  // Keep the chain resolving so it never permanently breaks future writes if one fails
+  writeLock = nextLock.catch(() => {});
+
+  // Wait on our actual operation so the caller gets any final unrecoverable error
+  await nextLock;
 }
 
 /**

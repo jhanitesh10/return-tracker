@@ -213,30 +213,68 @@ export function Recorder({ orderId, skuId, notes, className, onSaveSuccess }: Re
     try {
       let successCount = 0;
       const totalItems = (videoUrl ? 1 : 0) + capturedImages.length;
+      let hasErrors = false;
+
+      // Define reliable upload helper with internal retries
+      const uploadWithRetry = async (blob: Blob, mimeType: string) => {
+        let retries = 3;
+        while (retries > 0) {
+           try {
+             await uploadFile(blob, mimeType);
+             return true;
+           } catch (error) {
+             retries--;
+             console.error(`Upload failed, retries left: ${retries}`, error);
+             if (retries === 0) return false;
+             await new Promise(r => setTimeout(r, 1500));
+           }
+        }
+        return false;
+      };
 
       // 1. Upload Video
       if (videoUrl) {
         setSaveProgress(`Uploading video (1/${totalItems})...`);
         const videoBlob = new Blob(chunksRef.current, { type: recordedMimeType });
-        await uploadFile(videoBlob, recordedMimeType);
-        successCount++;
+        const success = await uploadWithRetry(videoBlob, recordedMimeType);
+        if (success) {
+          successCount++;
+          // Clean up video state locally immediately
+          setVideoUrl(null);
+          chunksRef.current = [];
+        } else {
+          hasErrors = true;
+        }
       }
 
       // 2. Upload Images
+      const successfulImageIds: string[] = [];
       for (let i = 0; i < capturedImages.length; i++) {
+        const img = capturedImages[i];
         setSaveProgress(`Uploading image ${i + 1} of ${capturedImages.length} (${successCount + 1}/${totalItems})...`);
-        await uploadFile(capturedImages[i].blob, 'image/jpeg');
-        successCount++;
+        const success = await uploadWithRetry(img.blob, 'image/jpeg');
+        if (success) {
+          successCount++;
+          successfulImageIds.push(img.id);
+        } else {
+          hasErrors = true;
+        }
       }
 
-      setSuccessMessage(`Successfully saved ${successCount} items`);
-      if (onSaveSuccess) onSaveSuccess();
+      // Remove successful images from state so user can retry only failed ones
+      if (successfulImageIds.length > 0) {
+        setCapturedImages(prev => prev.filter(img => !successfulImageIds.includes(img.id)));
+      }
 
-      // Reset state
-      setVideoUrl(null);
-      setCapturedImages([]);
-      chunksRef.current = [];
-      setShowStoppedMessage(false);
+      if (hasErrors) {
+        setError(`Failed to save some items. Saved ${successCount} out of ${totalItems}. Please try saving again.`);
+        if (successCount > 0 && onSaveSuccess) onSaveSuccess(); // refresh dashboard with partial success
+      } else {
+        setSuccessMessage(`Successfully saved ${successCount} items`);
+        if (onSaveSuccess) onSaveSuccess();
+        setShowStoppedMessage(false);
+      }
+
     } catch (err) {
       console.error('Error saving media:', err);
       setError('Failed to save some media items. Please check your connection.');
